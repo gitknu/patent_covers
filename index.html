@@ -178,14 +178,12 @@
                 try {
                     const placeholder = "_____"; 
 
-                    // Specific placeholders as requested
-                    const patent_number = row[4] || '____________';       // Column E: 12 underscores
-                    const patent_date = row[5] ||   '__________';         // Column F: 10 underscores
-                    const app_number = row[6] ||    '_______';            // Column G: 7 underscores
-                    const app_date = row[7] ||      '__________';         // Column H: 10 underscores
-                    const title = row[8] ||         '_'.repeat(265);      // Column I: 265 underscores
+                    const patent_number = row[4] || '____________';       
+                    const patent_date = row[5] ||   '__________';         
+                    const app_number = row[6] ||    '_______';            
+                    const app_date = row[7] ||      '__________';         
+                    const title = row[8] ||         '_'.repeat(265);      
 
-                    // Other variables
                     const file_enumeration = row[1] || placeholder;
                     const patent_type_full = row[2] || '';
                     const patent_type = patent_type_full.split('.')[0];
@@ -232,7 +230,9 @@
                     if (qr_data_url) {
                         try {
                             const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
-                            doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 90, 50, 90, 90);
+                            // --- EDITED: Made QR code 1.5x bigger (90 * 1.5 = 135) ---
+                            doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 135, 50, 135, 135);
+                            // --- END OF EDIT ---
                         } catch (err) {
                             logStatus(`❌ Failed to generate QR code for row ${index + 1}: ${err}`);
                         }
@@ -246,11 +246,9 @@
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
                     
-                    // Left side: Patent info (Columns E/F)
                     doc.text(patent_date, margin, 145);
                     doc.text(patent_number, margin, 170);
                     
-                    // Right side: Application info (Columns G/H)
                     doc.text(app_date, 200, 145);
                     doc.text(app_number, 200, 170);
 
@@ -300,15 +298,14 @@
                     doc.setFontSize(10);
                     doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
 
-                    // --- EDITED: Added underscore placeholders for empty fields in prev/next ---
                     let prevRowString = "----------";
                     if (index > 0) {
                         const prevRow = data[index - 1];
                         if (prevRow && prevRow.length >= 7) {
                             const prev_enum = prevRow[1] || '___';
                             const prev_header = prevRow[3] || '____';
-                            const prev_patent = prevRow[4] || '____________'; // Col E
-                            const prev_app = prevRow[6] || '_______';       // Col G
+                            const prev_patent = prevRow[4] || '____________';
+                            const prev_app = prevRow[6] || '_______';      
                             prevRowString = `${prev_enum}. ${prev_header}, ${prev_patent}, ${prev_app}`;
                         }
                     }
@@ -319,12 +316,11 @@
                         if (nextRow && nextRow.length >= 7) {
                             const next_enum = nextRow[1] || '___';
                             const next_header = nextRow[3] || '____';
-                            const next_patent = nextRow[4] || '____________'; // Col E
-                            const next_app = nextRow[6] || '_______';       // Col G
+                            const next_patent = nextRow[4] || '____________';
+                            const next_app = nextRow[6] || '_______';      
                             nextRowString = `${next_enum}. ${next_header}, ${next_patent}, ${next_app}`;
                         }
                     }
-                    // --- END OF EDIT ---
                     
                     doc.text(prevRowString, x_right, footerY + 30);
                     doc.text(nextRowString, x_right, footerY + 45);
