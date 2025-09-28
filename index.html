@@ -169,25 +169,28 @@
 
                 const row = data[index];
                 
-                if (row.length < 11) { // B to K means 10 columns, so indices 1 through 10.
+                if (row.length < 11) {
                     logStatus(`- [${index + 1}/${data.length}] Skipping malformed row (not enough columns).`);
                     setTimeout(() => processRow(index + 1), 0);
                     return;
                 }
                 
                 try {
-                    // --- EDITED: Assign variables according to the new B-K mapping ---
                     const placeholder = "_____";
-                    const file_enumeration = row[1] || placeholder; // B - file number
-                    const patent_type = row[2] || '';             // C - type (КМ, etc.)
-                    const header_number = row[3] || placeholder;    // D - number with slash
-                    const patent_number = row[4] || placeholder;    // E - patent number
-                    const patent_date = row[5] || placeholder;      // F - patent date
-                    const app_number = row[6] || placeholder;       // G - application number
-                    const app_date = row[7] || placeholder;         // H - application date
-                    const title = row[8] || placeholder;            // I - full name of patent
-                    const inventors_raw = row[9] || placeholder;    // J - authors list
-                    const qr_data_url = row[10];                    // K - QR code data
+                    const file_enumeration = row[1] || placeholder; 
+                    
+                    // --- EDITED: Split string from Column C to get text before the dot ---
+                    const patent_type_full = row[2] || '';
+                    const patent_type = patent_type_full.split('.')[0];
+                    
+                    const header_number = row[3] || placeholder;
+                    const patent_number = row[4] || placeholder;
+                    const patent_date = row[5] || placeholder;
+                    const app_number = row[6] || placeholder;
+                    const app_date = row[7] || placeholder;
+                    const title = row[8] || placeholder;
+                    const inventors_raw = row[9] || placeholder;
+                    const qr_data_url = row[10];
 
                     if (file_enumeration === placeholder) {
                          logStatus(`- [${index + 1}/${data.length}] Skipping row with empty file number (Column B).`);
@@ -202,7 +205,6 @@
                     const A4_WIDTH = 595.28;
                     const margin = 40;
 
-                    // --- Register fonts ---
                     doc.addFileToVFS('Roboto-Regular.ttf', new Uint8Array(fontRegular).reduce((data, byte) => data + String.fromCharCode(byte), ''));
                     doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
                     
@@ -214,7 +216,7 @@
                     // 1. Header Section
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(40);
-                    doc.text(`${header_number} ${patent_type}`, margin, 70); // From Columns D and C
+                    doc.text(`${header_number} ${patent_type}`, margin, 70);
 
                     // Dashed line under KM
                     doc.setLineDashPattern([4, 2], 0);
@@ -222,7 +224,7 @@
                     doc.line(margin + doc.getTextWidth(`${header_number} ${patent_type}`), 75, 300, 75);
                     doc.setLineDashPattern([], 0);
 
-                    // QR Code (from Column K)
+                    // QR Code
                     if (qr_data_url) {
                         try {
                             const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
@@ -239,13 +241,13 @@
 
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
-                    doc.text(app_date, margin, 145);       // Left Date from Column H
-                    doc.text(app_number, margin, 170);     // Left Number from Column G
+                    doc.text(app_date, margin, 145);
+                    doc.text(app_number, margin, 170);
                     
-                    doc.text(patent_date, 200, 145);      // Right Date from Column F
-                    doc.text(patent_number, 200, 170);    // Right Number from Column E
+                    doc.text(patent_date, 200, 145);
+                    doc.text(patent_number, 200, 170);
 
-                    // 3. Inventors Section (from Column J)
+                    // 3. Inventors Section
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(17);
                     doc.text("Винахідники:", A4_WIDTH / 2, 230, { align: 'center' });
@@ -255,7 +257,7 @@
                     const inventorLines = doc.splitTextToSize(inventors_raw, A4_WIDTH - margin * 4);
                     doc.text(inventorLines, A4_WIDTH / 2, 250, { align: 'center' });
                     
-                    // 4. Main Title Section (from Column I)
+                    // 4. Main Title Section
                     doc.setFontSize(17);
                     const titleLines = doc.splitTextToSize(title, A4_WIDTH - margin * 2);
                     const titleBlockHeight = doc.getTextDimensions(titleLines).h;
@@ -264,7 +266,7 @@
                     const titleY = titleYStart + ((titleYEnd - titleYStart) / 2) - (titleBlockHeight / 2);
                     doc.text(titleLines, margin, titleY);
 
-                    // 5. Footer Left Section (Static)
+                    // 5. Footer Left Section
                     const footerY = 770;
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(11);
@@ -281,7 +283,7 @@
                     doc.rect(margin + 80, footerY + 10, 20, 20);
                     doc.text("Списано\nу бухг.", margin + 80 + 25, footerY + 17);
 
-                    // 6. Footer Right Section (Static)
+                    // 6. Footer Right Section
                     const x_right = A4_WIDTH / 2 + 50;
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(14);
