@@ -176,18 +176,23 @@
                 }
                 
                 try {
-                    const placeholder = "_____";
+                    const placeholder = "_____"; 
+
+                    // Specific placeholders as requested
+                    const patent_number = row[4] || '____________';       // Column E: 12 underscores
+                    const patent_date = row[5] ||   '__________';         // Column F: 10 underscores
+                    const app_number = row[6] ||    '_______';            // Column G: 7 underscores
+                    const app_date = row[7] ||      '__________';         // Column H: 10 underscores
+                    const title = row[8] ||         '_'.repeat(265);      // Column I: 265 underscores
+
+                    // Other variables
                     const file_enumeration = row[1] || placeholder;
                     const patent_type_full = row[2] || '';
                     const patent_type = patent_type_full.split('.')[0];
                     const header_number = row[3] || placeholder;
-                    const patent_number = row[4] || placeholder;
-                    const patent_date = row[5] || placeholder;
-                    const app_number = row[6] || placeholder;
-                    const app_date = row[7] || placeholder;
-                    const title = row[8] || placeholder;
                     const inventors_raw = row[9] || placeholder;
                     const qr_data_url = row[10];
+
 
                     if (file_enumeration === placeholder) {
                          logStatus(`- [${index + 1}/${data.length}] Skipping row with empty file number (Column B).`);
@@ -195,10 +200,8 @@
                          return;
                     }
 
-                    // --- EDITED: Changed filename to include patent type ---
                     const safe_enumeration = file_enumeration.replace(/[\/\\]/g, '_');
                     const safe_filename = `${safe_enumeration}_${patent_type}.pdf`;
-                    // --- END OF EDIT ---
                     
                     logStatus(`- [${index + 1}/${data.length}] Generating: ${safe_filename}`);
 
@@ -297,14 +300,15 @@
                     doc.setFontSize(10);
                     doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
 
+                    // --- EDITED: Added underscore placeholders for empty fields in prev/next ---
                     let prevRowString = "----------";
                     if (index > 0) {
                         const prevRow = data[index - 1];
                         if (prevRow && prevRow.length >= 7) {
-                            const prev_enum = prevRow[1] || '';
-                            const prev_header = prevRow[3] || '';
-                            const prev_app = prevRow[6] || '';
-                            const prev_patent = prevRow[4] || '';
+                            const prev_enum = prevRow[1] || '___';
+                            const prev_header = prevRow[3] || '____';
+                            const prev_patent = prevRow[4] || '____________'; // Col E
+                            const prev_app = prevRow[6] || '_______';       // Col G
                             prevRowString = `${prev_enum}. ${prev_header}, ${prev_patent}, ${prev_app}`;
                         }
                     }
@@ -313,13 +317,14 @@
                     if (index < data.length - 1) {
                         const nextRow = data[index + 1];
                         if (nextRow && nextRow.length >= 7) {
-                            const next_enum = nextRow[1] || '';
-                            const next_header = nextRow[3] || '';
-                            const next_app = nextRow[6] || '';
-                            const next_patent = nextRow[4] || '';
+                            const next_enum = nextRow[1] || '___';
+                            const next_header = nextRow[3] || '____';
+                            const next_patent = nextRow[4] || '____________'; // Col E
+                            const next_app = nextRow[6] || '_______';       // Col G
                             nextRowString = `${next_enum}. ${next_header}, ${next_patent}, ${next_app}`;
                         }
                     }
+                    // --- END OF EDIT ---
                     
                     doc.text(prevRowString, x_right, footerY + 30);
                     doc.text(nextRowString, x_right, footerY + 45);
