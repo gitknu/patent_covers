@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <!-- 3. JSZip for creating a zip file of all PDFs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 4. FileSaver.js for robust file saving -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
 
     <style>
         body {
@@ -167,38 +169,40 @@
 
                 const row = data[index];
                 
-                if (row.length < 9) { // Check only for minimum length
-                    logStatus(`- [${index + 1}/${data.length}] Skipping malformed row.`);
+                if (row.length < 11) { // B to K means 10 columns, so indices 1 through 10.
+                    logStatus(`- [${index + 1}/${data.length}] Skipping malformed row (not enough columns).`);
                     setTimeout(() => processRow(index + 1), 0);
                     return;
                 }
                 
                 try {
-                    // --- EDITED: Assign variables with a fallback for empty data ---
+                    // --- EDITED: Assign variables according to the new B-K mapping ---
                     const placeholder = "_____";
-                    const file_id = row[1] || placeholder;
-                    const title = row[2] || placeholder;
-                    const app_date = row[3] || placeholder;
-                    const patent_date = row[4] || placeholder;
-                    const app_number = row[5] || placeholder;
-                    const patent_number = row[6] || placeholder;
-                    const inventors_raw = row[7] || placeholder;
-                    const qr_data_url = row[8]; // QR can be empty without placeholder
+                    const file_enumeration = row[1] || placeholder; // B - file number
+                    const patent_type = row[2] || '';             // C - type (КМ, etc.)
+                    const header_number = row[3] || placeholder;    // D - number with slash
+                    const patent_number = row[4] || placeholder;    // E - patent number
+                    const patent_date = row[5] || placeholder;      // F - patent date
+                    const app_number = row[6] || placeholder;       // G - application number
+                    const app_date = row[7] || placeholder;         // H - application date
+                    const title = row[8] || placeholder;            // I - full name of patent
+                    const inventors_raw = row[9] || placeholder;    // J - authors list
+                    const qr_data_url = row[10];                    // K - QR code data
 
-                    if (file_id === placeholder) {
-                         logStatus(`- [${index + 1}/${data.length}] Skipping row with empty File ID.`);
+                    if (file_enumeration === placeholder) {
+                         logStatus(`- [${index + 1}/${data.length}] Skipping row with empty file number (Column B).`);
                          setTimeout(() => processRow(index + 1), 0);
                          return;
                     }
 
-                    const safe_filename = file_id.replace(/[\/\\]/g, '_') + '.pdf';
+                    const safe_filename = file_enumeration.replace(/[\/\\]/g, '_') + '.pdf';
                     logStatus(`- [${index + 1}/${data.length}] Generating: ${safe_filename}`);
 
                     const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
                     const A4_WIDTH = 595.28;
                     const margin = 40;
 
-                    // --- Register the fonts for the document ---
+                    // --- Register fonts ---
                     doc.addFileToVFS('Roboto-Regular.ttf', new Uint8Array(fontRegular).reduce((data, byte) => data + String.fromCharCode(byte), ''));
                     doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
                     
@@ -210,15 +214,15 @@
                     // 1. Header Section
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(40);
-                    doc.text(`${file_id} KM`, margin, 70);
+                    doc.text(`${header_number} ${patent_type}`, margin, 70); // From Columns D and C
 
                     // Dashed line under KM
                     doc.setLineDashPattern([4, 2], 0);
                     doc.setLineWidth(1.5);
-                    doc.line(180, 75, 300, 75);
-                    doc.setLineDashPattern([], 0); // Reset dash pattern
+                    doc.line(margin + doc.getTextWidth(`${header_number} ${patent_type}`), 75, 300, 75);
+                    doc.setLineDashPattern([], 0);
 
-                    // QR Code
+                    // QR Code (from Column K)
                     if (qr_data_url) {
                         try {
                             const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
@@ -235,13 +239,13 @@
 
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
-                    doc.text(app_date, margin, 145);
-                    doc.text(app_number, margin, 170);
+                    doc.text(app_date, margin, 145);       // Left Date from Column H
+                    doc.text(app_number, margin, 170);     // Left Number from Column G
                     
-                    doc.text(patent_date, 200, 145);
-                    doc.text(patent_number, 200, 170);
+                    doc.text(patent_date, 200, 145);      // Right Date from Column F
+                    doc.text(patent_number, 200, 170);    // Right Number from Column E
 
-                    // 3. Inventors Section
+                    // 3. Inventors Section (from Column J)
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(17);
                     doc.text("Винахідники:", A4_WIDTH / 2, 230, { align: 'center' });
@@ -251,7 +255,7 @@
                     const inventorLines = doc.splitTextToSize(inventors_raw, A4_WIDTH - margin * 4);
                     doc.text(inventorLines, A4_WIDTH / 2, 250, { align: 'center' });
                     
-                    // 4. Main Title Section (Vertically Centered)
+                    // 4. Main Title Section (from Column I)
                     doc.setFontSize(17);
                     const titleLines = doc.splitTextToSize(title, A4_WIDTH - margin * 2);
                     const titleBlockHeight = doc.getTextDimensions(titleLines).h;
@@ -260,7 +264,7 @@
                     const titleY = titleYStart + ((titleYEnd - titleYStart) / 2) - (titleBlockHeight / 2);
                     doc.text(titleLines, margin, titleY);
 
-                    // 5. Footer Left Section
+                    // 5. Footer Left Section (Static)
                     const footerY = 770;
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(11);
@@ -271,13 +275,13 @@
                     doc.setFontSize(10);
                     doc.setLineWidth(1.5);
 
-                    doc.rect(margin, footerY + 10, 20, 20); // Checkbox 1
+                    doc.rect(margin, footerY + 10, 20, 20);
                     doc.text("Втратив\nчинніс.", margin + 25, footerY + 17);
                     
-                    doc.rect(margin + 80, footerY + 10, 20, 20); // Checkbox 2
+                    doc.rect(margin + 80, footerY + 10, 20, 20);
                     doc.text("Списано\nу бухг.", margin + 80 + 25, footerY + 17);
 
-                    // 6. Footer Right Section
+                    // 6. Footer Right Section (Static)
                     const x_right = A4_WIDTH / 2 + 50;
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(14);
@@ -288,8 +292,6 @@
                     doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
                     doc.text("997/25, U2025 123456, № 1234567", x_right, footerY + 30);
                     doc.text("999/25, U2025 654321, № 7654321", x_right, footerY + 45);
-
-                    // --- END OF VISUAL LAYOUT REPLICATION ---
 
                     const pdfBlob = doc.output('blob');
                     zip.file(safe_filename, pdfBlob);
@@ -307,12 +309,8 @@
                 zip.generateAsync({ type: "blob" })
                     .then(function(content) {
                         logStatus("✔ ZIP file created. Triggering download...");
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(content);
-                        link.download = "patents.zip";
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        saveAs(content, "patents.zip");
+                        
                         logStatus("\n✨ Process complete! Download should start shortly.");
                         setButtonState(false, 'Generate and Download All PDFs as ZIP');
                     })
