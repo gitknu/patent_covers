@@ -177,12 +177,9 @@
                 
                 try {
                     const placeholder = "_____";
-                    const file_enumeration = row[1] || placeholder; 
-                    
-                    // --- EDITED: Split string from Column C to get text before the dot ---
+                    const file_enumeration = row[1] || placeholder;
                     const patent_type_full = row[2] || '';
                     const patent_type = patent_type_full.split('.')[0];
-                    
                     const header_number = row[3] || placeholder;
                     const patent_number = row[4] || placeholder;
                     const patent_date = row[5] || placeholder;
@@ -218,7 +215,7 @@
                     doc.setFontSize(40);
                     doc.text(`${header_number} ${patent_type}`, margin, 70);
 
-                    // Dashed line under KM
+                    // Dashed line
                     doc.setLineDashPattern([4, 2], 0);
                     doc.setLineWidth(1.5);
                     doc.line(margin + doc.getTextWidth(`${header_number} ${patent_type}`), 75, 300, 75);
@@ -292,8 +289,35 @@
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(10);
                     doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
-                    doc.text("997/25, U2025 123456, № 1234567", x_right, footerY + 30);
-                    doc.text("999/25, U2025 654321, № 7654321", x_right, footerY + 45);
+
+                    // --- EDITED: Dynamic generation of previous and next row info ---
+                    let prevRowString = "----------";
+                    if (index > 0) {
+                        const prevRow = data[index - 1];
+                        if (prevRow && prevRow.length >= 7) {
+                            const prev_enum = prevRow[1] || '';
+                            const prev_header = prevRow[3] || '';
+                            const prev_app = prevRow[6] || '';
+                            const prev_patent = prevRow[4] || '';
+                            prevRowString = `${prev_enum}. ${prev_header}, ${prev_app}, ${prev_patent}`;
+                        }
+                    }
+
+                    let nextRowString = "----------";
+                    if (index < data.length - 1) {
+                        const nextRow = data[index + 1];
+                        if (nextRow && nextRow.length >= 7) {
+                            const next_enum = nextRow[1] || '';
+                            const next_header = nextRow[3] || '';
+                            const next_app = nextRow[6] || '';
+                            const next_patent = nextRow[4] || '';
+                            nextRowString = `${next_enum}. ${next_header}, ${next_app}, ${next_patent}`;
+                        }
+                    }
+                    
+                    doc.text(prevRowString, x_right, footerY + 30);
+                    doc.text(nextRowString, x_right, footerY + 45);
+                    // --- END OF EDIT ---
 
                     const pdfBlob = doc.output('blob');
                     zip.file(safe_filename, pdfBlob);
@@ -314,11 +338,13 @@
                         saveAs(content, "patents.zip");
                         
                         logStatus("\n✨ Process complete! Download should start shortly.");
-                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                        setButton.disabled = false;
+                        setButton.textContent = 'Generate and Download All PDFs as ZIP';
                     })
                     .catch(err => {
                         logStatus(`❌ Error creating ZIP file: ${err.message}`);
-                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                        setButton.disabled = false;
+                        setButton.textContent = 'Generate and Download All PDFs as ZIP';
                     });
             }
 
