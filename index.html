@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patent PDF Generator</title>
+    <!-- 1. jsPDF library for PDF creation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- 2. A modern, promise-based QR Code generator library. -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <!-- 3. JSZip for creating a zip file of all PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        button:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        #status {
+            margin-top: 30px;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: left;
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #dcdcdc;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Patent PDF Generator</h1>
+        <p>Click the button below to fetch data from the Google Sheet, generate a PDF for each entry, and download them all as a single ZIP file.</p>
+        <button id="generateBtn">Generate and Download All PDFs as ZIP</button>
+        <div id="status">Status messages will appear here...</div>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', async function() {
+            const { jsPDF } = window.jspdf;
+            
+            const statusDiv = document.getElementById('status');
+            const generateBtn = this;
+
+            function logStatus(message) {
+                console.log(message);
+                statusDiv.innerHTML += message + '\n';
+                statusDiv.scrollTop = statusDiv.scrollHeight;
+            }
+
+            function clearLog() { statusDiv.innerHTML = ''; }
+
+            function setButtonState(disabled, text) {
+                generateBtn.disabled = disabled;
+                generateBtn.textContent = text;
+            }
+
+            clearLog();
+            setButtonState(true, 'Processing...');
+            logStatus('Starting process...');
+            
+            let fontRegular, fontBold;
+            try {
+                logStatus('Loading font files...');
+                const fontRegularPromise = fetch('https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf').then(res => res.arrayBuffer());
+                const fontBoldPromise = fetch('https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf').then(res => res.arrayBuffer());
+
+                [fontRegular, fontBold] = await Promise.all([fontRegularPromise, fontBoldPromise]);
+                logStatus('✔ Fonts loaded successfully.');
+            } catch (error) {
+                logStatus(`❌ Critical Error: Could not load font files. ${error.message}`);
+                setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                return;
+            }
+
+            const spreadsheetId = '1K8FHpN9lJtsc1mNo34P2hsvKXFkMvw7wy0CTMzPFZlA';
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`;
+
+            let csvText;
+            try {
+                logStatus(`Fetching data from Google Sheet...`);
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                csvText = await response.text();
+                logStatus('✔ Data fetched successfully.');
+            } catch (error) {
+                logStatus(`❌ Error fetching sheet: ${error.message}`);
+                setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                return;
+            }
+
+            const rows = csvText.split('\n').slice(3).filter(row => row.trim() !== '');
+            const data = rows.map(row => {
+                const results = [];
+                let inQuote = false, field = '';
+                for (let i = 0; i < row.length; i++) {
+                    const char = row[i];
+                    if (char === '"' && (i === 0 || row[i-1] !== '\\')) inQuote = !inQuote;
+                    else if (char === ',' && !inQuote) { results.push(field); field = ''; }
+                    else field += char;
+                }
+                results.push(field);
+                return results.map(r => (r.startsWith('"') && r.endsWith('"')) ? r.slice(1, -1).replace(/""/g, '"') : r);
+            });
+
+            const zip = new JSZip();
+            logStatus(`Found ${data.length} valid data rows to process.`);
+            
+            async function processRow(index) {
+                if (index >= data.length) {
+                    finalizeZip();
+                    return;
+                }
+
+                const row = data[index];
+                
+                if (row.length < 9) { // Check only for minimum length
+                    logStatus(`- [${index + 1}/${data.length}] Skipping malformed row.`);
+                    setTimeout(() => processRow(index + 1), 0);
+                    return;
+                }
+                
+                try {
+                    // --- EDITED: Assign variables with a fallback for empty data ---
+                    const placeholder = "_____";
+                    const file_id = row[1] || placeholder;
+                    const title = row[2] || placeholder;
+                    const app_date = row[3] || placeholder;
+                    const patent_date = row[4] || placeholder;
+                    const app_number = row[5] || placeholder;
+                    const patent_number = row[6] || placeholder;
+                    const inventors_raw = row[7] || placeholder;
+                    const qr_data_url = row[8]; // QR can be empty without placeholder
+
+                    if (file_id === placeholder) {
+                         logStatus(`- [${index + 1}/${data.length}] Skipping row with empty File ID.`);
+                         setTimeout(() => processRow(index + 1), 0);
+                         return;
+                    }
+
+                    const safe_filename = file_id.replace(/[\/\\]/g, '_') + '.pdf';
+                    logStatus(`- [${index + 1}/${data.length}] Generating: ${safe_filename}`);
+
+                    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+                    const A4_WIDTH = 595.28;
+                    const margin = 40;
+
+                    // --- Register the fonts for the document ---
+                    doc.addFileToVFS('Roboto-Regular.ttf', new Uint8Array(fontRegular).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+                    
+                    doc.addFileToVFS('Roboto-Bold.ttf', new Uint8Array(fontBold).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+                    
+                    // --- START OF VISUAL LAYOUT REPLICATION ---
+
+                    // 1. Header Section
+                    doc.setFont('Roboto', 'bold');
+                    doc.setFontSize(40);
+                    doc.text(`${file_id} KM`, margin, 70);
+
+                    // Dashed line under KM
+                    doc.setLineDashPattern([4, 2], 0);
+                    doc.setLineWidth(1.5);
+                    doc.line(180, 75, 300, 75);
+                    doc.setLineDashPattern([], 0); // Reset dash pattern
+
+                    // QR Code
+                    if (qr_data_url) {
+                        try {
+                            const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
+                            doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 90, 50, 90, 90);
+                        } catch (err) {
+                            logStatus(`❌ Failed to generate QR code for row ${index + 1}: ${err}`);
+                        }
+                    }
+
+                    // 2. Dates & Numbers Section
+                    doc.setFont('Roboto', 'bold');
+                    doc.setFontSize(17);
+                    doc.text("Дати, заявка, патент:", margin, 115);
+
+                    doc.setFont('Roboto', 'normal');
+                    doc.setFontSize(17);
+                    doc.text(app_date, margin, 145);
+                    doc.text(app_number, margin, 170);
+                    
+                    doc.text(patent_date, 200, 145);
+                    doc.text(patent_number, 200, 170);
+
+                    // 3. Inventors Section
+                    doc.setFont('Roboto', 'bold');
+                    doc.setFontSize(17);
+                    doc.text("Винахідники:", A4_WIDTH / 2, 230, { align: 'center' });
+                    
+                    doc.setFont('Roboto', 'normal');
+                    doc.setFontSize(12);
+                    const inventorLines = doc.splitTextToSize(inventors_raw, A4_WIDTH - margin * 4);
+                    doc.text(inventorLines, A4_WIDTH / 2, 250, { align: 'center' });
+                    
+                    // 4. Main Title Section (Vertically Centered)
+                    doc.setFontSize(17);
+                    const titleLines = doc.splitTextToSize(title, A4_WIDTH - margin * 2);
+                    const titleBlockHeight = doc.getTextDimensions(titleLines).h;
+                    const titleYStart = 320;
+                    const titleYEnd = 720;
+                    const titleY = titleYStart + ((titleYEnd - titleYStart) / 2) - (titleBlockHeight / 2);
+                    doc.text(titleLines, margin, titleY);
+
+                    // 5. Footer Left Section
+                    const footerY = 770;
+                    doc.setFont('Roboto', 'bold');
+                    doc.setFontSize(11);
+                    doc.text("Позначити, якщо", margin, footerY);
+                    doc.line(margin, footerY + 3, margin + 95, footerY + 3);
+
+                    doc.setFont('Roboto', 'normal');
+                    doc.setFontSize(10);
+                    doc.setLineWidth(1.5);
+
+                    doc.rect(margin, footerY + 10, 20, 20); // Checkbox 1
+                    doc.text("Втратив\nчинніс.", margin + 25, footerY + 17);
+                    
+                    doc.rect(margin + 80, footerY + 10, 20, 20); // Checkbox 2
+                    doc.text("Списано\nу бухг.", margin + 80 + 25, footerY + 17);
+
+                    // 6. Footer Right Section
+                    const x_right = A4_WIDTH / 2 + 50;
+                    doc.setFont('Roboto', 'bold');
+                    doc.setFontSize(14);
+                    doc.text("Між такими папками:", x_right, footerY);
+                    
+                    doc.setFont('Roboto', 'normal');
+                    doc.setFontSize(10);
+                    doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
+                    doc.text("997/25, U2025 123456, № 1234567", x_right, footerY + 30);
+                    doc.text("999/25, U2025 654321, № 7654321", x_right, footerY + 45);
+
+                    // --- END OF VISUAL LAYOUT REPLICATION ---
+
+                    const pdfBlob = doc.output('blob');
+                    zip.file(safe_filename, pdfBlob);
+
+                } catch (e) {
+                    logStatus(`❌ Error processing row ${index + 1}: ${e.message}`);
+                }
+                
+                setTimeout(() => processRow(index + 1), 0);
+            }
+
+            function finalizeZip() {
+                logStatus("\n✔ All PDFs processed. Zipping files...");
+                setButtonState(true, 'Zipping...');
+                zip.generateAsync({ type: "blob" })
+                    .then(function(content) {
+                        logStatus("✔ ZIP file created. Triggering download...");
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(content);
+                        link.download = "patents.zip";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        logStatus("\n✨ Process complete! Download should start shortly.");
+                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                    })
+                    .catch(err => {
+                        logStatus(`❌ Error creating ZIP file: ${err.message}`);
+                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                    });
+            }
+
+            processRow(0);
+        });
+    </script>
+
+</body>
+</html>
