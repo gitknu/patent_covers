@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patent PDF Generator</title>
+    <title>Генератор PDF для Патентів</title>
     <!-- 1. jsPDF library for PDF creation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- 2. A modern, promise-based QR Code generator library. -->
@@ -45,6 +45,12 @@
             margin-bottom: 30px;
             line-height: 1.6;
         }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
         button {
             background-color: #3498db;
             color: white;
@@ -56,9 +62,15 @@
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
+        #openSheetBtn {
+            background-color: #27ae60; /* A distinct green color */
+        }
         button:hover:not(:disabled) {
             background-color: #2980b9;
             transform: translateY(-2px);
+        }
+        #openSheetBtn:hover:not(:disabled) {
+            background-color: #229954;
         }
         button:disabled {
             background-color: #bdc3c7;
@@ -84,13 +96,23 @@
 <body>
 
     <div class="container">
-        <h1>Patent PDF Generator</h1>
-        <p>Click the button below to fetch data from the Google Sheet, generate a PDF for each entry, and download them all as a single ZIP file.</p>
-        <button id="generateBtn">Generate and Download All PDFs as ZIP</button>
-        <div id="status">Status messages will appear here...</div>
+        <h1>Генератор PDF для Патентів</h1>
+        <p>Натисніть кнопку нижче, щоб отримати дані з Google Таблиці, створити PDF для кожного запису та завантажити їх усі одним ZIP-архівом.</p>
+        <div class="button-container">
+            <button id="openSheetBtn">Відкрити Google Таблицю</button>
+            <button id="generateBtn">Згенерувати та Завантажити всі PDF у ZIP-архіві</button>
+        </div>
+        <div id="status">Повідомлення про стан з'являться тут...</div>
     </div>
 
     <script>
+        const spreadsheetId = '1K8FHpN9lJtsc1mNo34P2hsvKXFkMvw7wy0CTMzPFZlA';
+
+        document.getElementById('openSheetBtn').addEventListener('click', function() {
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+            window.open(sheetUrl, '_blank');
+        });
+
         document.getElementById('generateBtn').addEventListener('click', async function() {
             const { jsPDF } = window.jspdf;
             
@@ -111,36 +133,35 @@
             }
 
             clearLog();
-            setButtonState(true, 'Processing...');
-            logStatus('Starting process...');
+            setButtonState(true, 'Обробка...');
+            logStatus('Початок процесу...');
             
             let fontRegular, fontBold;
             try {
-                logStatus('Loading font files...');
+                logStatus('Завантаження файлів шрифтів...');
                 const fontRegularPromise = fetch('https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf').then(res => res.arrayBuffer());
                 const fontBoldPromise = fetch('https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf').then(res => res.arrayBuffer());
 
                 [fontRegular, fontBold] = await Promise.all([fontRegularPromise, fontBoldPromise]);
-                logStatus('✔ Fonts loaded successfully.');
+                logStatus('✔ Шрифти успішно завантажено.');
             } catch (error) {
-                logStatus(`❌ Critical Error: Could not load font files. ${error.message}`);
-                setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                logStatus(`❌ Критична помилка: Не вдалося завантажити файли шрифтів. ${error.message}`);
+                setButtonState(false, 'Згенерувати та Завантажити всі PDF у ZIP-архіві');
                 return;
             }
-
-            const spreadsheetId = '1K8FHpN9lJtsc1mNo34P2hsvKXFkMvw7wy0CTMzPFZlA';
+            
             const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`;
 
             let csvText;
             try {
-                logStatus(`Fetching data from Google Sheet...`);
+                logStatus(`Отримання даних з Google Таблиці...`);
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 csvText = await response.text();
-                logStatus('✔ Data fetched successfully.');
+                logStatus('✔ Дані успішно отримано.');
             } catch (error) {
-                logStatus(`❌ Error fetching sheet: ${error.message}`);
-                setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                logStatus(`❌ Помилка отримання даних з таблиці: ${error.message}`);
+                setButtonState(false, 'Згенерувати та Завантажити всі PDF у ZIP-архіві');
                 return;
             }
 
@@ -159,7 +180,7 @@
             });
 
             const zip = new JSZip();
-            logStatus(`Found ${data.length} valid data rows to process.`);
+            logStatus(`Знайдено ${data.length} дійсних рядків для обробки.`);
             
             async function processRow(index) {
                 if (index >= data.length) {
@@ -170,7 +191,7 @@
                 const row = data[index];
                 
                 if (row.length < 11) {
-                    logStatus(`- [${index + 1}/${data.length}] Skipping malformed row (not enough columns).`);
+                    logStatus(`- [${index + 1}/${data.length}] Пропуск пошкодженого рядка (недостатньо стовпців).`);
                     setTimeout(() => processRow(index + 1), 0);
                     return;
                 }
@@ -193,7 +214,7 @@
 
 
                     if (file_enumeration === placeholder) {
-                         logStatus(`- [${index + 1}/${data.length}] Skipping row with empty file number (Column B).`);
+                         logStatus(`- [${index + 1}/${data.length}] Пропуск рядка з порожнім номером файлу (Стовпець B).`);
                          setTimeout(() => processRow(index + 1), 0);
                          return;
                     }
@@ -201,7 +222,7 @@
                     const safe_enumeration = file_enumeration.replace(/[\/\\]/g, '_');
                     const safe_filename = `${safe_enumeration}_${patent_type}.pdf`;
                     
-                    logStatus(`- [${index + 1}/${data.length}] Generating: ${safe_filename}`);
+                    logStatus(`- [${index + 1}/${data.length}] Генерація: ${safe_filename}`);
 
                     const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
                     const A4_WIDTH = 595.28;
@@ -234,7 +255,7 @@
                             doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 135, 50, 135, 135);
                             // --- END OF EDIT ---
                         } catch (err) {
-                            logStatus(`❌ Failed to generate QR code for row ${index + 1}: ${err}`);
+                            logStatus(`❌ Не вдалося згенерувати QR-код для рядка ${index + 1}: ${err}`);
                         }
                     }
 
@@ -329,26 +350,26 @@
                     zip.file(safe_filename, pdfBlob);
 
                 } catch (e) {
-                    logStatus(`❌ Error processing row ${index + 1}: ${e.message}`);
+                    logStatus(`❌ Помилка обробки рядка ${index + 1}: ${e.message}`);
                 }
                 
                 setTimeout(() => processRow(index + 1), 0);
             }
 
             function finalizeZip() {
-                logStatus("\n✔ All PDFs processed. Zipping files...");
-                setButtonState(true, 'Zipping...');
+                logStatus("\n✔ Усі PDF оброблено. Архівація файлів...");
+                setButtonState(true, 'Архівація...');
                 zip.generateAsync({ type: "blob" })
                     .then(function(content) {
-                        logStatus("✔ ZIP file created. Triggering download...");
+                        logStatus("✔ ZIP-архів створено. Починаю завантаження...");
                         saveAs(content, "patents.zip");
                         
-                        logStatus("\n✨ Process complete! Download should start shortly.");
-                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                        logStatus("\n✨ Процес завершено! Завантаження має розпочатися найближчим часом.");
+                        setButtonState(false, 'Згенерувати та Завантажити всі PDF у ZIP-архіві');
                     })
                     .catch(err => {
-                        logStatus(`❌ Error creating ZIP file: ${err.message}`);
-                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
+                        logStatus(`❌ Помилка створення ZIP-архіву: ${err.message}`);
+                        setButtonState(false, 'Згенерувати та Завантажити всі PDF у ZIP-архіві');
                     });
             }
 
