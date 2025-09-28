@@ -238,11 +238,16 @@
 
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
-                    doc.text(app_date, margin, 145);
-                    doc.text(app_number, margin, 170);
                     
-                    doc.text(patent_date, 200, 145);
-                    doc.text(patent_number, 200, 170);
+                    // --- EDITED: Swapped patent and application data positions ---
+                    // Left side: Patent info (Columns E/F)
+                    doc.text(patent_date, margin, 145);
+                    doc.text(patent_number, margin, 170);
+                    
+                    // Right side: Application info (Columns G/H)
+                    doc.text(app_date, 200, 145);
+                    doc.text(app_number, 200, 170);
+                    // --- END OF EDIT ---
 
                     // 3. Inventors Section
                     doc.setFont('Roboto', 'bold');
@@ -290,7 +295,6 @@
                     doc.setFontSize(10);
                     doc.text("(можливі зміни послідовності)", x_right, footerY + 15);
 
-                    // --- EDITED: Dynamic generation of previous and next row info ---
                     let prevRowString = "----------";
                     if (index > 0) {
                         const prevRow = data[index - 1];
@@ -299,7 +303,6 @@
                             const prev_header = prevRow[3] || '';
                             const prev_app = prevRow[6] || '';
                             const prev_patent = prevRow[4] || '';
-                            // FIXED: Swapped prev_app and prev_patent to show patent # (Col E) then app # (Col G)
                             prevRowString = `${prev_enum}. ${prev_header}, ${prev_patent}, ${prev_app}`;
                         }
                     }
@@ -312,14 +315,12 @@
                             const next_header = nextRow[3] || '';
                             const next_app = nextRow[6] || '';
                             const next_patent = nextRow[4] || '';
-                            // FIXED: Swapped next_app and next_patent to show patent # (Col E) then app # (Col G)
                             nextRowString = `${next_enum}. ${next_header}, ${next_patent}, ${next_app}`;
                         }
                     }
                     
                     doc.text(prevRowString, x_right, footerY + 30);
                     doc.text(nextRowString, x_right, footerY + 45);
-                    // --- END OF EDIT ---
 
                     const pdfBlob = doc.output('blob');
                     zip.file(safe_filename, pdfBlob);
