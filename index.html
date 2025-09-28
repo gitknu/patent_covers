@@ -299,7 +299,8 @@
                             const prev_header = prevRow[3] || '';
                             const prev_app = prevRow[6] || '';
                             const prev_patent = prevRow[4] || '';
-                            prevRowString = `${prev_enum}. ${prev_header}, ${prev_app}, ${prev_patent}`;
+                            // FIXED: Swapped prev_app and prev_patent to show patent # (Col E) then app # (Col G)
+                            prevRowString = `${prev_enum}. ${prev_header}, ${prev_patent}, ${prev_app}`;
                         }
                     }
 
@@ -311,7 +312,8 @@
                             const next_header = nextRow[3] || '';
                             const next_app = nextRow[6] || '';
                             const next_patent = nextRow[4] || '';
-                            nextRowString = `${next_enum}. ${next_header}, ${next_app}, ${next_patent}`;
+                            // FIXED: Swapped next_app and next_patent to show patent # (Col E) then app # (Col G)
+                            nextRowString = `${next_enum}. ${next_header}, ${next_patent}, ${next_app}`;
                         }
                     }
                     
@@ -338,13 +340,11 @@
                         saveAs(content, "patents.zip");
                         
                         logStatus("\n✨ Process complete! Download should start shortly.");
-                        setButton.disabled = false;
-                        setButton.textContent = 'Generate and Download All PDFs as ZIP';
+                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
                     })
                     .catch(err => {
                         logStatus(`❌ Error creating ZIP file: ${err.message}`);
-                        setButton.disabled = false;
-                        setButton.textContent = 'Generate and Download All PDFs as ZIP';
+                        setButtonState(false, 'Generate and Download All PDFs as ZIP');
                     });
             }
 
