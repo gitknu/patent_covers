@@ -251,9 +251,7 @@
                     if (qr_data_url) {
                         try {
                             const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
-                            // --- EDITED: Made QR code 1.5x bigger (90 * 1.5 = 135) ---
                             doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 135, 50, 135, 135);
-                            // --- END OF EDIT ---
                         } catch (err) {
                             logStatus(`❌ Не вдалося згенерувати QR-код для рядка ${index + 1}: ${err}`);
                         }
@@ -267,21 +265,27 @@
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
                     
+                    // --- EDITED: Aligned the right column (app date/number) to the right. ---
+                    // Left column (default left alignment)
                     doc.text(patent_date, margin, 145);
                     doc.text(patent_number, margin, 170);
                     
-                    doc.text(app_date, 200, 145);
-                    doc.text(app_number, 200, 170);
+                    // Right column (right-aligned)
+                    const secondColumnX = 300;
+                    doc.text(app_date, secondColumnX, 145, { align: 'right' });
+                    doc.text(app_number, secondColumnX, 170, { align: 'right' });
+                    // --- END OF EDIT ---
 
                     // 3. Inventors Section
                     doc.setFont('Roboto', 'bold');
                     doc.setFontSize(17);
-                    doc.text("Винахідники:", A4_WIDTH / 2, 230, { align: 'center' });
+                    const inventorsX = A4_WIDTH - margin; 
+                    doc.text("Винахідники:", inventorsX, 230, { align: 'right' });
                     
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(12);
-                    const inventorLines = doc.splitTextToSize(inventors_raw, A4_WIDTH - margin * 4);
-                    doc.text(inventorLines, A4_WIDTH / 2, 250, { align: 'center' });
+                    const inventorLines = doc.splitTextToSize(inventors_raw, (A4_WIDTH / 2) - (margin * 1.5) );
+                    doc.text(inventorLines, inventorsX, 250, { align: 'right' });
                     
                     // 4. Main Title Section
                     doc.setFontSize(17);
@@ -290,7 +294,7 @@
                     const titleYStart = 320;
                     const titleYEnd = 720;
                     const titleY = titleYStart + ((titleYEnd - titleYStart) / 2) - (titleBlockHeight / 2);
-                    doc.text(titleLines, margin, titleY);
+                    doc.text(titleLines, A4_WIDTH / 2, titleY, { align: 'center' });
 
                     // 5. Footer Left Section
                     const footerY = 770;
