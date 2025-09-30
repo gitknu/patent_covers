@@ -273,10 +273,10 @@
                     }
                     
                     renderContainer.innerHTML = `
-                        <div style="font-weight: 700; font-size: 40px; margin-bottom: 30px;">${header_number} ${patent_type}</div>
+                        <div style="font-weight: 700; font-size: 50px; margin-bottom: 30px;">${header_number} ${patent_type}</div>
                         ${qrCodeImage}
-                        <div style="font-weight: 700; font-size: 17px; margin-bottom: 20px;">Дати, заявка, патент:</div>
-                        <div style="font-size: 17px; display: flex; justify-content: space-between; margin-bottom: 40px; width: 50%;">
+                        <div style="font-weight: 700; font-size: 21.25px; margin-bottom: 20px;">Дати, заявка, патент:</div>
+                        <div style="font-size: 21.25px; display: flex; justify-content: space-between; margin-bottom: 40px; width: 65%;">
                             <div>
                                 <div>${patent_date}</div>
                                 <div>${patent_number}</div>
@@ -287,31 +287,31 @@
                             </div>
                         </div>
                         <div style="text-align: right; margin-bottom: 20px;">
-                            <div style="font-weight: 700; font-size: 17px;">Винахідники:</div>
-                            <div style="font-size: 12px; max-width: 50%; margin-left: auto;">${inventors_raw}</div>
+                            <div style="font-weight: 700; font-size: 21.25px;">Винахідники:</div>
+                            <div style="font-size: 15px; max-width: 50%; margin-left: auto;">${inventors_raw}</div>
                         </div>
-                        <div style="position: absolute; top: 320px; left: 40px; right: 40px; bottom: 120px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 17px;">
+                        <div style="position: absolute; top: 320px; left: 40px; right: 40px; bottom: 120px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 21.25px;">
                            ${title}
                         </div>
                         <div style="position: absolute; bottom: 40px; left: 40px; right: 40px; display: flex; justify-content: space-between;">
                             <div>
-                                <div style="font-weight: 700; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; display: inline-block;">Позначити, якщо</div>
+                                <div style="font-weight: 700; font-size: 13.75px; border-bottom: 1px solid #000; padding-bottom: 2px; display: inline-block;">Позначити, якщо</div>
                                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                                     <div style="display: flex; align-items: center;">
                                         <div style="width: 20px; height: 20px; border: 1.5px solid #000; margin-right: 5px;"></div>
-                                        <div style="font-size: 10px;">Втратив<br>чинніс.</div>
+                                        <div style="font-size: 12.5px;">Втратив<br>чинніс.</div>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <div style="width: 20px; height: 20px; border: 1.5px solid #000; margin-right: 5px;"></div>
-                                        <div style="font-size: 10px;">Списано<br>у бухг.</div>
+                                        <div style="font-size: 12.5px;">Списано<br>у бухг.</div>
                                     </div>
                                 </div>
                             </div>
                             <!-- CORRECTED ALIGNMENT FOR THE RIGHT-SIDE FOOTER BLOCK -->
                             <div style="text-align: right;">
-                                <div style="font-weight: 700; font-size: 14px;">Між такими папками:</div>
-                                <div style="font-size: 10px;">(можливі зміни послідовності)</div>
-                                <div style="margin-top: 5px; font-size: 10px;">
+                                <div style="font-weight: 700; font-size: 17.5px;">Між такими папками:</div>
+                                <div style="font-size: 12.5px;">(можливі зміни послідовності)</div>
+                                <div style="margin-top: 5px; font-size: 12.5px;">
                                     <div>${prevRowString}</div>
                                     <div>${nextRowString}</div>
                                 </div>
