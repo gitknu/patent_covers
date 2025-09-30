@@ -251,7 +251,24 @@
                     if (qr_data_url) {
                         try {
                             const qrCodeDataURL = await QRCode.toDataURL(qr_data_url);
-                            doc.addImage(qrCodeDataURL, 'PNG', A4_WIDTH - margin - 135, 50, 135, 135);
+                            
+                            // --- EDITED: Resize QR code by 120% keeping bottom-left corner fixed ---
+                            const originalSize = 135;
+                            const newSize = originalSize * 1.2; // 120% of original size
+                            
+                            const originalX = A4_WIDTH - margin - originalSize;
+                            const originalY = 50;
+                            const originalBottomY = originalY + originalSize;
+                            
+                            // The new X is the same as the original left edge, as requested.
+                            const newX = originalX; 
+                            // The new Y is calculated by taking the fixed bottom position and subtracting the new height.
+                            // This moves the QR code up to accommodate the larger size.
+                            const newY = originalBottomY - newSize;
+                            
+                            doc.addImage(qrCodeDataURL, 'PNG', newX, newY, newSize, newSize);
+                            // --- END OF EDIT ---
+
                         } catch (err) {
                             logStatus(`❌ Не вдалося згенерувати QR-код для рядка ${index + 1}: ${err}`);
                         }
@@ -265,7 +282,6 @@
                     doc.setFont('Roboto', 'normal');
                     doc.setFontSize(17);
                     
-                    // --- EDITED: Aligned the right column (app date/number) to the right. ---
                     // Left column (default left alignment)
                     doc.text(patent_date, margin, 145);
                     doc.text(patent_number, margin, 170);
@@ -274,7 +290,6 @@
                     const secondColumnX = 300;
                     doc.text(app_date, secondColumnX, 145, { align: 'right' });
                     doc.text(app_number, secondColumnX, 170, { align: 'right' });
-                    // --- END OF EDIT ---
 
                     // 3. Inventors Section
                     doc.setFont('Roboto', 'bold');
