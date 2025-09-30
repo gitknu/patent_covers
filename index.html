@@ -276,7 +276,6 @@
                         <div style="font-weight: 700; font-size: 40px; margin-bottom: 30px;">${header_number} ${patent_type}</div>
                         ${qrCodeImage}
                         <div style="font-weight: 700; font-size: 17px; margin-bottom: 20px;">Дати, заявка, патент:</div>
-                        <!-- CORRECTED LAYOUT FOR DATES AND NUMBERS -->
                         <div style="font-size: 17px; display: flex; justify-content: space-between; margin-bottom: 40px; width: 50%;">
                             <div>
                                 <div>${patent_date}</div>
@@ -287,7 +286,6 @@
                                 <div>${app_number}</div>
                             </div>
                         </div>
-                        <!-- END OF CORRECTION -->
                         <div style="text-align: right; margin-bottom: 20px;">
                             <div style="font-weight: 700; font-size: 17px;">Винахідники:</div>
                             <div style="font-size: 12px; max-width: 50%; margin-left: auto;">${inventors_raw}</div>
@@ -309,7 +307,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div>
+                            <!-- CORRECTED ALIGNMENT FOR THE RIGHT-SIDE FOOTER BLOCK -->
+                            <div style="text-align: right;">
                                 <div style="font-weight: 700; font-size: 14px;">Між такими папками:</div>
                                 <div style="font-size: 10px;">(можливі зміни послідовності)</div>
                                 <div style="margin-top: 5px; font-size: 10px;">
