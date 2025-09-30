@@ -242,7 +242,7 @@
                     let qrCodeImage = '';
                     if (qr_data_url) {
                         try {
-                            qrCodeImage = `<img src="${await QRCode.toDataURL(qr_data_url)}" style="position: absolute; right: 40px; top: 50px; width: 162px; height: 162px;">`;
+                            qrCodeImage = `<img src="${await QRCode.toDataURL(qr_data_url)}" style="position: absolute; right: 20px; top: 40px; width: 186px; height: 186px;">`;
                         } catch (err) {
                             logStatus(`❌ Не вдалося згенерувати QR-код для рядка ${index + 1}: ${err}`);
                         }
