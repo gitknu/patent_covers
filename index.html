@@ -428,9 +428,19 @@
 
                 logStatus("\n✔ Усі PDF оброблено. Архівація файлів...");
                 setButtonState(true, 'Архівація...');
+
+                // --- MODIFICATION START ---
+                // Add a placeholder for the progress percentage
+                logStatus(`- Архівація: <span id="zip-progress">0.00</span>%`);
+
                 zip.generateAsync({ type: "blob" }, function updateCallback(metadata) {
-                    logStatus(`- Архівація: ${metadata.percent.toFixed(2)}%`);
+                    // Update the content of the placeholder span instead of logging a new line
+                    const progressElement = document.getElementById('zip-progress');
+                    if (progressElement) {
+                        progressElement.textContent = metadata.percent.toFixed(2);
+                    }
                 })
+                // --- MODIFICATION END ---
                     .then(function(content) {
                         logStatus("✔ ZIP-архів створено. Починаю завантаження...");
                         saveAs(content, "patents.zip");
