@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор PDF для Патентів</title>
+    <!-- 1. jsPDF library for PDF creation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- 2. A modern, promise-based QR Code generator library. -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <!-- 3. JSZip for creating a zip file of all PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 4. FileSaver.js for robust file saving -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <!-- 5. html2canvas for taking "screenshots" of HTML elements -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 6. Roboto Mono font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* --- LAYOUT WRAPPER --- */
+        .main-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            width: 100%;
+            max-width: 1400px;
+            align-items: flex-start;
+        }
+
+        /* Left Side (Controls & Log) */
+        .container {
+            flex: 1;
+            text-align: center;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            /* Keep controls sticky too */
+            position: sticky;
+            top: 20px;
+        }
+
+        /* Right Side (Preview) */
+        .preview-container {
+            flex: 1;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            
+            /* Logic to keep preview visible and fitting screen */
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* Ensure container doesn't force scroll, but fits content */
+            height: fit-content; 
+        }
+
+        .preview-container h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        #preview-image {
+            /* Force image to fit within the viewport height (80vh) and container width */
+            max-width: 100%;
+            max-height: 80vh; 
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            
+            border: 1px solid #ddd;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            background-color: #f9f9f9;
+            display: block;
+        }
+
+        #preview-caption {
+            margin-top: 10px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            color: #7f8c8d;
+            word-break: break-all;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 900px) {
+            .main-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            .container, .preview-container {
+                width: 100%;
+                max-width: 100%;
+                position: static; /* Disable sticky on mobile */
+            }
+            #preview-image {
+                max-height: 50vh; /* Smaller on mobile */
+            }
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        p {
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        #sheetUrlInput {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        #sheetUrlInput:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        #openSheetBtn {
+            background-color: #27ae60;
+        }
+        button:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        #openSheetBtn:hover:not(:disabled) {
+            background-color: #229954;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        #status {
+            margin-top: 30px;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: left;
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #dcdcdc;
+            font-size: 14px;
+        }
+        /* Styles for the off-screen PDF rendering container */
+        .pdf-render-container {
+            font-family: 'Roboto Mono', monospace;
+            position: absolute;
+            left: -9999px; /* Move it off-screen */
+            top: auto;
+            width: 595.28px; /* A4 width in points */
+            height: 841.89px; /* A4 height in points */
+            background: white;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+        /* Style for timer */
+        #time-tracker {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="time-tracker"></div>
+
+    <div class="main-wrapper">
+        <!-- LEFT SIDE: Controls and Logs -->
+        <div class="container">
+            <h1>Генератор PDF для Патентів</h1>
+            <p>Вставте посилання на Google Таблицю нижче, натисніть кнопку, щоб отримати дані, створити PDF для кожного запису та завантажити їх усі одним ZIP-архівом.</p>
+            
+            <div class="input-group">
+                <label for="sheetUrlInput">Посилання на Google Таблицю (або ID):</label>
+                <input type="text" id="sheetUrlInput" placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit">
+            </div>
+
+            <div class="button-container">
+                <button id="openSheetBtn">Відкрити Google Таблицю</button>
+                <button id="generateBtn">Згенерувати та Завантажити всі PDF</button>
+            </div>
+            <div id="status">Повідомлення про стан з'являться тут...</div>
+        </div>
+
+        <!-- RIGHT SIDE: Realtime Preview -->
+        <div class="preview-container">
+            <h2>Попередній перегляд (Наживо)</h2>
+            <img id="preview-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Попередній перегляд з'явиться тут">
+            <div id="preview-caption">Очікування початку генерації...</div>
+        </div>
+    </div>
+
+    <!-- Container for rendering the PDF content before screenshotting (Hidden/Off-screen) -->
+    <div id="render-container-parent"></div>
+
+    <script>
+        function getSpreadsheetIdFromInput() {
+            const inputVal = document.getElementById('sheetUrlInput').value.trim();
+            if (!inputVal) return null;
+            const match = inputVal.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : inputVal;
+        }
+
+        document.getElementById('openSheetBtn').addEventListener('click', function() {
+            const id = getSpreadsheetIdFromInput();
+            if (!id) {
+                alert("Будь ласка, введіть посилання на Google Таблицю.");
+                return;
+            }
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${id}/edit`;
+            window.open(sheetUrl, '_blank');
+        });
+
+        document.getElementById('generateBtn').addEventListener('click', async function() {
+            const { jsPDF } = window.jspdf;
+            
+            const statusDiv = document.getElementById('status');
+            const generateBtn = this;
+            const timeTrackerDiv = document.getElementById('time-tracker');
+            const previewImage = document.getElementById('preview-image');
+            const previewCaption = document.getElementById('preview-caption');
+            
+            const spreadsheetId = getSpreadsheetIdFromInput();
+            
+            if (!spreadsheetId) {
+                alert("Будь ласка, введіть посилання на Google Таблицю.");
+                return;
+            }
+
+            let processStartTime;
+            let processingTimes = [];
+
+            function logStatus(message) {
+                console.log(message);
+                statusDiv.innerHTML += message + '\n';
+                statusDiv.scrollTop = statusDiv.scrollHeight;
+            }
+
+            function clearLog() { statusDiv.innerHTML = ''; }
+
+            function setButtonState(disabled, text) {
+                generateBtn.disabled = disabled;
+                generateBtn.textContent = text;
+            }
+            
+            function formatTime(milliseconds) {
+                const totalSeconds = Math.floor(milliseconds / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            function updateTimer(processedCount, totalCount) {
+                 const elapsedTime = new Date().getTime() - processStartTime;
+
+                let estimatedTimeLeft = '...';
+                if (processingTimes.length > 0) {
+                    const avgTime = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
+                    const remainingCount = totalCount - processedCount;
+                    const remainingMilliseconds = avgTime * remainingCount;
+                    estimatedTimeLeft = formatTime(remainingMilliseconds);
+                }
+
+                timeTrackerDiv.innerHTML = `
+                    Минуло часу генерації: ${formatTime(elapsedTime)}<br>
+                    Залишилося (приблизно): ${estimatedTimeLeft}
+                `;
+            }
+
+
+            clearLog();
+            setButtonState(true, 'Обробка...');
+            logStatus(`Початок процесу для ID: ${spreadsheetId}...`);
+            previewCaption.textContent = "Завантаження даних...";
+            
+            processStartTime = new Date().getTime();
+            timeTrackerDiv.style.display = 'block';
+            timeTrackerDiv.innerHTML = 'Часу минуло: 00:00<br>Залишилось приблизно: ...';
+            
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv`;
+
+            let csvText;
+            try {
+                logStatus(`Отримання даних з Google Таблиці...`);
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 404) throw new Error("Таблицю не знайдено. Перевірте посилання.");
+                    if (response.status === 400) throw new Error("Невірний запит. Перевірте ID таблиці.");
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                csvText = await response.text();
+                logStatus('✔ Дані успішно отримано.');
+            } catch (error) {
+                logStatus(`❌ Помилка отримання даних з таблиці: ${error.message}`);
+                logStatus(`❗ Переконайтеся, що таблиця має доступ "Усі, хто має посилання" (Anyone with the link).`);
+                setButtonState(false, 'Згенерувати та Завантажити всі PDF');
+                timeTrackerDiv.style.display = 'none';
+                previewCaption.textContent = "Помилка завантаження.";
+                return;
+            }
+
+            const rows = csvText.split('\n').slice(3).filter(row => row.trim() !== '');
+            const data = rows.map(row => {
+                const results = [];
+                let inQuote = false, field = '';
+                for (let i = 0; i < row.length; i++) {
+                    const char = row[i];
+                    if (char === '"' && (i === 0 || row[i-1] !== '\\')) inQuote = !inQuote;
+                    else if (char === ',' && !inQuote) { results.push(field); field = ''; }
+                    else field += char;
+                }
+                results.push(field);
+                return results.map(r => (r.startsWith('"') && r.endsWith('"')) ? r.slice(1, -1).replace(/""/g, '"') : r);
+            });
+
+            const zip = new JSZip();
+            const totalRows = data.length;
+            logStatus(`Знайдено ${totalRows} дійсних рядків для обробки.`);
+            
+            async function processRow(index) {
+                if (index >= totalRows) {
+                    finalizeZip();
+                    return;
+                }
+                
+                updateTimer(index, totalRows);
+                const rowStartTime = new Date().getTime();
+
+                const row = data[index];
+                
+                if (row.length < 11) {
+                    logStatus(`- [${index + 1}/${totalRows}] Пропуск пошкодженого рядка.`);
+                    setTimeout(() => processRow(index + 1), 0);
+                    return;
+                }
+                
+                try {
+                    const placeholder = "_____"; 
+
+                    const patent_number = row[4] || '____________';       
+                    const patent_date = row[5] ||   '__________';         
+                    const app_number = row[6] ||    '_______';            
+                    const app_date = row[7] ||      '__________';         
+                    const title = row[8] ||         '_'.repeat(265);      
+
+                    const file_enumeration = row[1] || placeholder;
+                    const patent_type_full = row[2] || '';
+                    const patent_type = patent_type_full.split('.')[0];
+                    const header_number = row[3] || placeholder;
+                    const inventors_raw = row[9] || placeholder;
+                    const qr_data_url = row[10];
+
+
+                    if (file_enumeration === placeholder) {
+                         logStatus(`- [${index + 1}/${totalRows}] Пропуск (пусто).`);
+                         setTimeout(() => processRow(index + 1), 0);
+                         return;
+                    }
+
+                    const safe_enumeration = file_enumeration.replace(/[\/\\]/g, '_');
+                    const safe_filename = `${safe_enumeration}_${patent_type}.pdf`;
+                    
+                    logStatus(`- [${index + 1}/${totalRows}] Обробка: ${safe_filename}`);
+
+                    const renderContainerParent = document.getElementById('render-container-parent');
+                    const renderContainer = document.createElement('div');
+                    renderContainer.className = 'pdf-render-container';
+
+                    let qrCodeImage = '';
+                    if (qr_data_url) {
+                        try {
+                            qrCodeImage = `<img src="${await QRCode.toDataURL(qr_data_url)}" style="position: absolute; right: 20px; top: 40px; width: 186px; height: 186px;">`;
+                        } catch (err) {
+                            logStatus(`❌ Не вдалося згенерувати QR: ${err}`);
+                        }
+                    }
+
+                    let prevRowString = "----------";
+                    if (index > 0) {
+                        const prevRow = data[index - 1];
+                        if (prevRow && prevRow.length >= 7) {
+                            const prev_enum = prevRow[1] || '___';
+                            const prev_header = prevRow[3] || '____';
+                            const prev_patent = prevRow[4] || '____________';
+                            const prev_app = prevRow[6] || '_______';      
+                            prevRowString = `${prev_enum}. ${prev_header}, ${prev_patent}, ${prev_app}`;
+                        }
+                    }
+
+                    let nextRowString = "----------";
+                    if (index < data.length - 1) {
+                        const nextRow = data[index + 1];
+                        if (nextRow && nextRow.length >= 7) {
+                            const next_enum = nextRow[1] || '___';
+                            const next_header = nextRow[3] || '____';
+                            const next_patent = nextRow[4] || '____________';
+                            const next_app = nextRow[6] || '_______';      
+                            nextRowString = `${next_enum}. ${next_header}, ${next_patent}, ${next_app}`;
+                        }
+                    }
+                    
+                    renderContainer.innerHTML = `
+                        <div style="font-weight: 700; font-size: 50px; margin-bottom: 30px;">${header_number} ${patent_type}</div>
+                        ${qrCodeImage}
+                        <div style="font-weight: 700; font-size: 21.25px; margin-bottom: 5px;">Дати, заявка, патент:</div>
+                        <div style="font-size: 21.25px; display: flex; justify-content: space-between; margin-bottom: 40px; width: 65%;">
+                            <div>
+                                <div>${patent_date}</div>
+                                <div>${patent_number}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div>${app_date}</div>
+                                <div>${app_number}</div>
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-bottom: 20px;">
+                            <div style="font-weight: 700; font-size: 21.25px;">Винахідники:</div>
+                            <div style="font-size: 15px;">${inventors_raw}</div>
+                        </div>
+                        <div style="position: absolute; top: 320px; left: 40px; right: 40px; bottom: 120px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 21.25px;">
+                           ${title}
+                        </div>
+                        <div style="position: absolute; bottom: 40px; left: 40px; right: 40px; display: flex; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 17.1875px; border-bottom: 1px solid #000; padding-bottom: 2px; display: inline-block;">Позначити, якщо</div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <div style="display: flex; align-items: center;">
+                                        <div style="width: 20px; height: 20px; border: 1.5px solid #000; margin-right: 5px;"></div>
+                                        <div style="font-size: 12.5px;">Втратив<br>чинніс.</div>
+                                    </div>
+                                    <div style="display: flex; align-items: center;">
+                                        <div style="width: 20px; height: 20px; border: 1.5px solid #000; margin-right: 5px;"></div>
+                                        <div style="font-size: 12.5px;">Списано<br>у бухг.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 700; font-size: 17.5px;">Між такими папками:</div>
+                                <div style="font-size: 12.5px;">(можливі зміни послідовності)</div>
+                                <div style="margin-top: 5px; font-size: 12.5px;">
+                                    <div>${prevRowString}</div>
+                                    <div>${nextRowString}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    renderContainerParent.appendChild(renderContainer);
+                    
+                    const canvas = await html2canvas(renderContainer, {
+                        scale: 1.5,
+                        useCORS: true,
+                        logging: false
+                    });
+
+                    renderContainerParent.removeChild(renderContainer);
+                    
+                    const imgData = canvas.toDataURL('image/png');
+
+                    // --- NEW: UPDATE LIVE PREVIEW ---
+                    previewImage.src = imgData;
+                    previewCaption.textContent = `Згенеровано: ${safe_filename}`;
+                    // --------------------------------
+
+                    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+                    const pdfWidth = doc.internal.pageSize.getWidth();
+                    const pdfHeight = doc.internal.pageSize.getHeight();
+                    
+                    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+                    
+                    if (qr_data_url) {
+                        const qrWidth = 186;
+                        const qrHeight = 186;
+                        const qrX = pdfWidth - 20 - qrWidth; 
+                        const qrY = 40;                      
+                        doc.link(qrX, qrY, qrWidth, qrHeight, { url: qr_data_url });
+                    }
+
+                    const pdfBlob = doc.output('blob');
+                    zip.file(safe_filename, pdfBlob);
+
+                } catch (e) {
+                    logStatus(`❌ Помилка обробки рядка ${index + 1}: ${e.message}`);
+                }
+                
+                const rowEndTime = new Date().getTime();
+                processingTimes.push(rowEndTime - rowStartTime);
+                
+                setTimeout(() => processRow(index + 1), 0);
+            }
+
+            function finalizeZip() {
+                const totalTime = formatTime(new Date().getTime() - processStartTime);
+                timeTrackerDiv.innerHTML = `Генерацію завершено!<br>Загальний час: ${totalTime}`;
+                previewCaption.textContent = "Обробку завершено. Створення архіву...";
+
+                logStatus("\n✔ Усі PDF оброблено. Архівація файлів...");
+                setButtonState(true, 'Архівація...');
+
+                logStatus(`- Архівація: <span id="zip-progress">0.00</span>%`);
+
+                zip.generateAsync({ type: "blob" }, function updateCallback(metadata) {
+                    const progressElement = document.getElementById('zip-progress');
+                    if (progressElement) {
+                        progressElement.textContent = metadata.percent.toFixed(2);
+                    }
+                })
+                    .then(function(content) {
+                        logStatus("✔ ZIP-архів створено. Починаю завантаження...");
+                        saveAs(content, "patents.zip");
+                        
+                        logStatus("\n✨ Процес завершено! Завантаження має розпочатися найближчим часом.");
+                        setButtonState(false, 'Згенерувати та Завантажити всі PDF');
+                        previewCaption.textContent = "Готово!";
+                        setTimeout(() => { timeTrackerDiv.style.display = 'none'; }, 5000); 
+                    })
+                    .catch(err => {
+                        logStatus(`❌ Помилка створення ZIP-архіву: ${err.message}.`);
+                        setButtonState(false, 'Згенерувати та Завантажити всі PDF');
+                        timeTrackerDiv.style.display = 'none'; 
+                    });
+            }
+
+            processRow(0);
+        });
+    </script>
+
+</body>
+</html>
